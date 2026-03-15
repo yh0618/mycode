@@ -1,0 +1,294 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct
+{
+    char bno[20];
+    char title[50];
+    char sno[20];
+    int status;
+}Book;
+
+typedef struct node
+{
+    Book book;
+    struct node *next;
+}Node;
+
+// 初始化
+Node* InitList()
+{
+    Node *L = (Node*)malloc(sizeof(Node));
+    if(L == NULL) { printf("内存分配失败！\n"); exit(1); }
+    L->next = NULL;
+    return L;
+}
+
+// 美化打印（和图2-18风格一致）
+void PrintList(Node *L)
+{
+    Node *p = L->next;
+    printf("\n\t\t\t\t图书信息表\n");
+    printf("----------------------------------------------------------------\n");
+    printf("书号\t\t书名\t\t借阅人\t\t状态\n");
+    printf("----------------------------------------------------------------\n");
+    while(p != NULL)
+    {
+        printf("%s\t%-17s\t%s\t\t%d\n", p->book.bno, p->book.title, p->book.sno, p->book.status);
+        p = p->next;
+    }
+    printf("----------------------------------------------------------------\n");
+}
+
+// 按书名查找（你的原函数）
+Node* FindBook(Node *L, char name[])
+{
+    Node *p = L->next;
+    while(p != NULL)
+    {
+        if(strcmp(p->book.title, name) == 0) return p;
+        p = p->next;
+    }
+    return NULL;
+}
+
+// 添加图书（支持空格）
+void AddBook(Node *L)
+{
+    Node *p = L;
+    while(p->next != NULL) p = p->next;
+
+    Node *s = (Node*)malloc(sizeof(Node));
+    if(s == NULL) { printf("内存分配失败！\n"); return; }
+
+    printf("输入书号: ");
+    scanf("%19s", s->book.bno);
+    printf("输入书名: ");
+    scanf(" %49[^\n]", s->book.title);   // ← 关键修复：支持空格
+
+    strcpy(s->book.sno, "NULL");
+    s->book.status = 0;
+    s->next = NULL;
+    p->next = s;
+    printf("添加成功\n");
+}
+
+// 删除图书（支持空格）
+void DeleteBook(Node *L)
+{
+    char name[50];
+    printf("输入删除书名: ");
+    scanf(" %49[^\n]", name);
+
+    Node *p = L;
+    while(p->next != NULL)
+    {
+        if(strcmp(p->next->book.title, name) == 0)
+        {
+            Node *temp = p->next;
+            p->next = temp->next;
+            free(temp);
+            printf("删除成功\n");
+            return;
+        }
+        p = p->next;
+    }
+    printf("未找到该书\n");
+}
+
+// 借阅图书
+void BorrowBook(Node *L)
+{
+    char name[50], sno[20];
+    printf("输入书名: ");
+    scanf(" %49[^\n]", name);
+
+    Node *p = FindBook(L, name);
+    if(p == NULL) { printf("图书不存在\n"); return; }
+    if(p->book.status == 1) { printf("图书已借出\n"); return; }
+
+    printf("输入学号: ");
+    scanf("%19s", sno);
+    strcpy(p->book.sno, sno);
+    p->book.status = 1;
+    printf("借书成功\n");
+}
+
+// 归还图书（修复：必须验证学号）
+void ReturnBook(Node *L)
+{
+    char name[50], sno[20];
+    printf("输入书名: ");
+    scanf(" %49[^\n]", name);
+
+    Node *p = FindBook(L, name);
+    if(p == NULL) { printf("图书不存在\n"); return; }
+
+    printf("输入你的学号: ");
+    scanf("%19s", sno);
+
+    if(strcmp(p->book.sno, sno) != 0 || p->book.status != 1)
+    {
+        printf("归还失败！学号不匹配或未借出\n");
+        return;
+    }
+
+    strcpy(p->book.sno, "NULL");
+    p->book.status = 0;
+    printf("归还成功\n");
+}
+
+// 统计（你的原函数）
+void CountBook(Node *L)
+{
+    Node *p = L->next;
+    int total = 0, borrow = 0;
+    while(p != NULL)
+    {
+        total++;
+        if(p->book.status == 1) borrow++;
+        p = p->next;
+    }
+    printf("图书总数:%d  已借出:%d  未借出:%d\n", total, borrow, total-borrow);
+}
+
+// 模糊查找（你的原函数，支持空格）
+void SearchBook(Node *L)
+{
+    char key[50];
+    printf("输入关键字: ");
+    scanf(" %49[^\n]", key);
+
+    Node *p = L->next;
+    int found = 0;
+    while(p != NULL)
+    {
+        if(strstr(p->book.title, key) != NULL)
+        {
+            printf("%s\t%s\n", p->book.bno, p->book.title);
+            found = 1;
+        }
+        p = p->next;
+    }
+    if(!found) printf("未找到匹配图书\n");
+}
+
+// 排序（你的原函数）
+void SortBook(Node *L)
+{
+    Node *p, *q;
+    Book temp;
+    for(p = L->next; p != NULL; p = p->next)
+        for(q = p->next; q != NULL; q = q->next)
+            if(strcmp(p->book.title, q->book.title) > 0)
+            {
+                temp = p->book;
+                p->book = q->book;
+                q->book = temp;
+            }
+    printf("排序完成\n");
+}
+
+// 保存（支持空格，用 | 分隔）
+void SaveBooks(Node *L)
+{
+    FILE *fp = fopen("books.txt", "w");
+    if(fp == NULL) return;
+    Node *p = L->next;
+    while(p != NULL)
+    {
+        fprintf(fp, "%s|%s|%s|%d\n", p->book.bno, p->book.title, p->book.sno, p->book.status);
+        p = p->next;
+    }
+    fclose(fp);
+    printf("数据保存成功\n");
+}
+
+// 加载（支持空格）
+void LoadBooks(Node *L)
+{
+    FILE *fp = fopen("books.txt", "r");
+    if(fp == NULL) return;
+
+    Node *p = L;
+    char line[200];
+    while(fgets(line, sizeof(line), fp))
+    {
+        Node *s = (Node*)malloc(sizeof(Node));
+        if(sscanf(line, "%19[^|]|%49[^|]|%19[^|]|%d",
+                  s->book.bno, s->book.title, s->book.sno, &s->book.status) != 4)
+        {
+            free(s); continue;
+        }
+        s->next = NULL;
+        p->next = s;
+        p = s;
+    }
+    fclose(fp);
+}
+
+// 释放内存
+void FreeList(Node *L)
+{
+    Node *p = L, *q;
+    while(p != NULL)
+    {
+        q = p;
+        p = p->next;
+        free(q);
+    }
+}
+
+// 菜单（你的原菜单）
+void Menu()
+{
+    printf("\n======图书管理系统======\n");
+    printf("1 显示图书\n2 查找图书\n3 借阅图书\n4 归还图书\n");
+    printf("5 添加图书\n6 删除图书\n7 图书统计\n8 图书排序\n");
+    printf("9 模糊查找\n10 保存数据\n0 退出系统\n");
+    printf("========================\n");
+}
+
+int main()
+{
+    Node *L = InitList();
+    LoadBooks(L);
+
+    int choice;
+    while(1)
+    {
+        Menu();
+        printf("请选择: ");
+        scanf("%d", &choice);
+
+        if(choice == 0)
+        {
+            SaveBooks(L);
+            printf("感谢使用！数据已自动保存\n");
+            break;
+        }
+        else if(choice == 1) PrintList(L);
+        else if(choice == 2)
+        {
+            char name[50];
+            printf("输入书名: ");
+            scanf(" %49[^\n]", name);
+            Node *p = FindBook(L, name);
+            if(p) printf("找到: %s (%s)\n", p->book.title, p->book.bno);
+            else printf("未找到\n");
+        }
+        else if(choice == 3) BorrowBook(L);
+        else if(choice == 4) ReturnBook(L);
+        else if(choice == 5) AddBook(L);
+        else if(choice == 6) DeleteBook(L);
+        else if(choice == 7) CountBook(L);
+        else if(choice == 8) SortBook(L);
+        else if(choice == 9) SearchBook(L);
+        else if(choice == 10) SaveBooks(L);
+        else printf("输入错误！\n");
+    }
+
+    FreeList(L);
+    return 0;
+}
